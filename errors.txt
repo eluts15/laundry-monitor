@@ -1,0 +1,2 @@
+   Compiling laundry-monitor v0.1.0 (/home/eths/agents/projects/laundry-monitor)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 1.43s

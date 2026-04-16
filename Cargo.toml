@@ -9,10 +9,19 @@ name = "laundry-monitor"
 path = "./src/bin/main.rs"
 
 [dependencies]
-esp-hal = { version = "~1.0", features = ["esp32"] }
+esp-hal             = { version = "~1.0",  features = ["esp32", "unstable"] }
 esp-bootloader-esp-idf = { version = "0.4.0", features = ["esp32"] }
-esp-println = { version = "0.13", features = ["esp32"] }
-critical-section = "1.2.0"
+esp-println         = { version = "0.13",  features = ["esp32"] }
+esp-alloc           = "0.9"
+esp-radio           = { version = "0.17.0",  features = ["esp32", "wifi"] }
+embassy-net-driver  = "0.2"
+esp-rtos            = { version = "0.2",   features = ["esp32", "esp-radio"] }
+blocking-network-stack = { git = "https://github.com/bjoernQ/blocking-network-stack.git", rev = "b3ecefc222d8806edd221f266999ca339c52d34e", default-features = false, features = ["dhcpv4", "tcp"] }
+embedded-io         = "0.6"
+heapless            = "0.9"
+smoltcp             = { version = "0.12",  default-features = false, features = [
+    "medium-ethernet", "proto-ipv4", "socket-tcp", "socket-dhcpv4",
+] }
 
 
 [profile.dev]

@@ -1,0 +1,12 @@
+# ntfy server configuration for local development
+base-url: http://localhost:8080
+
+# Listen on all interfaces
+listen-http: :8080
+
+# Persist messages so they survive container restarts
+cache-file: /var/cache/ntfy/cache.db
+cache-duration: 12h
+
+# Allow publishing without auth for local use
+auth-default-access: "read-write"
