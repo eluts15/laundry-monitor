@@ -16,8 +16,8 @@ use esp_hal::time::{Duration, Instant};
 use esp_hal::timer::timg::TimerGroup;
 use esp_println::println;
 use esp_radio::wifi::{ClientConfig, ModeConfig};
-use laundry_monitor::notify::send_ntfy_notification;
-use laundry_monitor::utils::{blocking_delay, octet, parse_u16};
+use laundry_monitor::appliance::Appliance;
+use laundry_monitor::utils::{blocking_delay, octet, parse_u16, parse_u64};
 use laundry_monitor::wifi_adapter::WifiAdapter;
 use smoltcp::iface::{SocketSet, SocketStorage};
 use smoltcp::wire::Ipv4Address;
@@ -44,11 +44,18 @@ const HOST_IP: Ipv4Address = Ipv4Address::new(
 );
 
 const NFTY_PORT: u16 = parse_u16(env!("NFTY_PORT"));
-const NFTY_TOPIC: &str = env!("NFTY_TOPIC");
 
-/// How long the sensor must be still before declaring the cycle complete.
-const IDLE_TIMEOUT: Duration = Duration::from_secs(30);
-/// How often to poll the sensor (5 ms catches brief SW-420 pulses).
+// -- Washer config ------------------------------------------------------------
+const WASHER_TOPIC: &str = env!("WASHER_TOPIC");
+const WASHER_IDLE_TIMEOUT: Duration =
+    Duration::from_secs(parse_u64(env!("WASHER_IDLE_TIMEOUT_SECS")));
+
+// -- Dryer config -------------------------------------------------------------
+const DRYER_TOPIC: &str = env!("DRYER_TOPIC");
+const DRYER_IDLE_TIMEOUT: Duration =
+    Duration::from_secs(parse_u64(env!("DRYER_IDLE_TIMEOUT_SECS")));
+
+/// How often to poll the sensors (5 ms catches brief SW-420 pulses).
 const POLL_INTERVAL: Duration = Duration::from_millis(5);
 
 #[allow(
@@ -131,62 +138,29 @@ fn main() -> ! {
     // ── Sensor GPIO ─────────────────────────────────────────────────────────
     // SW-420 is active-high: D0 goes HIGH when vibrating, LOW when still.
     // Pull-down ensures a stable LOW reading when the sensor is quiet.
-    let sensor = Input::new(
+    let washer_pin = Input::new(
         peripherals.GPIO25,
         InputConfig::default().with_pull(Pull::Down),
     );
+    let dryer_pin = Input::new(
+        peripherals.GPIO26,
+        InputConfig::default().with_pull(Pull::Down),
+    );
 
-    println!("[INFO] Laundry monitor started — waiting for vibrations...");
+    // ── Appliance state machines ─────────────────────────────────────────────
+    let mut washer = Appliance::new("Washer", WASHER_TOPIC, WASHER_IDLE_TIMEOUT);
+    let mut dryer = Appliance::new("Dryer", DRYER_TOPIC, DRYER_IDLE_TIMEOUT);
 
-    let mut last_vibration: Option<Instant> = None;
-    let mut alert_sent = false;
-    let mut prev_is_high = false;
-    let mut last_heartbeat = Instant::now();
+    println!("[INFO] Laundry monitor started — watching Washer (GPIO25) and Dryer (GPIO26).");
 
     // ── Main poll loop ───────────────────────────────────────────────────────
     loop {
         // Keep the network stack alive between sensor polls.
         stack.work();
 
-        let is_high = sensor.is_high();
-
-        // Log only on state transitions.
-        if is_high && !prev_is_high {
-            println!("[DEBUG] State -> VIBRATING");
-        } else if !is_high && prev_is_high {
-            println!("[DEBUG] State -> STILL");
-        }
-        prev_is_high = is_high;
-
-        if is_high {
-            last_vibration = Some(Instant::now());
-            last_heartbeat = Instant::now();
-            if alert_sent {
-                println!("[DEBUG] New cycle detected after previous completion.");
-            }
-            alert_sent = false;
-        }
-
-        if let Some(last) = last_vibration {
-            let elapsed = last.elapsed();
-
-            if !alert_sent && last_heartbeat.elapsed() >= Duration::from_secs(10) {
-                println!(
-                    "[DEBUG] IDLE ({}/{} s without vibration)",
-                    elapsed.as_secs(),
-                    IDLE_TIMEOUT.as_secs(),
-                );
-                last_heartbeat = Instant::now();
-            }
-
-            if !alert_sent && elapsed >= IDLE_TIMEOUT {
-                println!("[INFO] Cycle complete — sending ntfy notification...");
-                send_ntfy_notification(&mut stack, HOST_IP, NFTY_PORT, NFTY_TOPIC);
-                alert_sent = true;
-            }
-        }
+        washer.poll(washer_pin.is_high(), &mut stack, HOST_IP, NFTY_PORT);
+        dryer.poll(dryer_pin.is_high(), &mut stack, HOST_IP, NFTY_PORT);
 
         blocking_delay(POLL_INTERVAL);
     }
 }
-

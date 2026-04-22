@@ -41,3 +41,16 @@ pub const fn parse_u16(s: &str) -> u16 {
     }
     val
 }
+
+/// Parses a `u64` from a decimal string at compile time.
+/// Used for idle timeout values supplied via `.env`.
+pub const fn parse_u64(s: &str) -> u64 {
+    let s = s.as_bytes();
+    let mut val: u64 = 0;
+    let mut i = 0;
+    while i < s.len() {
+        val = val * 10 + (s[i] - b'0') as u64;
+        i += 1;
+    }
+    val
+}

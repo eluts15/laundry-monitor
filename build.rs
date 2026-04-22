@@ -11,11 +11,17 @@ fn main() {
 /// re-exports them as Cargo environment variables.
 ///
 /// Variables loaded:
-///   - `WIFI_SSID`      → `env!("WIFI_SSID")`
-///   - `WIFI_PASSWORD`  → `env!("WIFI_PASSWORD")`
-///   - `HOST_IP`        → `env!("HOST_IP_0")` .. `env!("HOST_IP_3")` (octets)
-///   - `NFTY_PORT`      → `env!("NFTY_PORT")` (validated u16)
-///   - `NFTY_TOPIC`     → `env!("NFTY_TOPIC")`
+///   - `WIFI_SSID`               → `env!("WIFI_SSID")`
+///   - `WIFI_PASSWORD`           → `env!("WIFI_PASSWORD")`
+///   - `HOST_IP`                 → `env!("HOST_IP_0")` .. `env!("HOST_IP_3")` (octets)
+///   - `NFTY_PORT`               → `env!("NFTY_PORT")` (validated u16)
+///   - `WASHER_GPIO`             → `env!("WASHER_GPIO")` (validated u8)
+///   - `WASHER_TOPIC`            → `env!("WASHER_TOPIC")`
+///   - `WASHER_IDLE_TIMEOUT_SECS`→ `env!("WASHER_IDLE_TIMEOUT_SECS")` (validated u64)
+///   - `DRYER_GPIO`              → `env!("DRYER_GPIO")` (validated u8)
+///   - `DRYER_TOPIC`             → `env!("DRYER_TOPIC")`
+///   - `DRYER_IDLE_TIMEOUT_SECS` → `env!("DRYER_IDLE_TIMEOUT_SECS")` (validated u64)
+///
 /// Precedence: a value already present in the *process* environment (e.g. set
 /// by CI or exported in the shell) always wins over the `.env` file, so you
 /// can override without touching the file.
@@ -28,7 +34,12 @@ fn load_env() {
         "WIFI_PASSWORD",
         "HOST_IP",
         "NFTY_PORT",
-        "NFTY_TOPIC",
+        "WASHER_GPIO",
+        "WASHER_TOPIC",
+        "WASHER_IDLE_TIMEOUT_SECS",
+        "DRYER_GPIO",
+        "DRYER_TOPIC",
+        "DRYER_IDLE_TIMEOUT_SECS",
     ] {
         println!("cargo:rerun-if-env-changed={var}");
     }
@@ -68,7 +79,7 @@ fn load_env() {
     };
 
     // -- String vars ----------------------------------------------------------
-    for var in ["WIFI_SSID", "WIFI_PASSWORD", "NFTY_TOPIC"] {
+    for var in ["WIFI_SSID", "WIFI_PASSWORD", "WASHER_TOPIC", "DRYER_TOPIC"] {
         println!("cargo:rustc-env={var}={}", resolve(var));
     }
 
@@ -97,6 +108,24 @@ fn load_env() {
         .parse()
         .unwrap_or_else(|_| panic!("❌  NFTY_PORT `{port_str}` must be a valid u16 (0–65535)"));
     println!("cargo:rustc-env=NFTY_PORT={port}");
+
+    // -- Appliance GPIO pins → validated u8 -----------------------------------
+    for var in ["WASHER_GPIO", "DRYER_GPIO"] {
+        let val_str = resolve(var);
+        let val: u8 = val_str.trim().parse().unwrap_or_else(|_| {
+            panic!("❌  `{var}` `{val_str}` must be a valid GPIO pin number (0–39)")
+        });
+        println!("cargo:rustc-env={var}={val}");
+    }
+
+    // -- Appliance idle timeouts → validated u64 ------------------------------
+    for var in ["WASHER_IDLE_TIMEOUT_SECS", "DRYER_IDLE_TIMEOUT_SECS"] {
+        let val_str = resolve(var);
+        let val: u64 = val_str.trim().parse().unwrap_or_else(|_| {
+            panic!("❌  `{var}` `{val_str}` must be a valid number of seconds")
+        });
+        println!("cargo:rustc-env={var}={val}");
+    }
 }
 
 fn linker_be_nice() {
