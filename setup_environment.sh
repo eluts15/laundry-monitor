@@ -121,7 +121,7 @@ HOST_IP=$(ifconfig 2>/dev/null \
     | awk '/inet / && !/127\.0\.0\.1/ && !/172\.[0-9]+\./ { print $2; exit }')
  
 if [[ -z "$HOST_IP" ]]; then
-    warn "Could not detect a LAN IP address — IP_ADDRESS will not be written to .env"
+    warn "Could not detect a LAN IP address — HOST_IP will not be written to .env"
 else
     info "Detected host IP: $HOST_IP"
  
@@ -130,14 +130,14 @@ else
     # Create .env if it doesn't exist yet
     touch "$ENV_FILE"
  
-    if grep -q "^IP_ADDRESS=" "$ENV_FILE" 2>/dev/null; then
+    if grep -q "^HOST_IP=" "$ENV_FILE" 2>/dev/null; then
         # Overwrite the existing entry in-place
-        sed -i "s|^IP_ADDRESS=.*|IP_ADDRESS=$HOST_IP|" "$ENV_FILE"
-        info "Updated IP_ADDRESS in $ENV_FILE"
+        sed -i "s|^HOST_IP=.*|HOST_IP=$HOST_IP|" "$ENV_FILE"
+        info "Updated HOST_IP in $ENV_FILE"
     else
         # Append a new entry
-        echo "IP_ADDRESS=$HOST_IP" >> "$ENV_FILE"
-        info "Appended IP_ADDRESS to $ENV_FILE"
+        echo "HOST_IP=$HOST_IP" >> "$ENV_FILE"
+        info "Appended HOST_IP to $ENV_FILE"
     fi
 fi
 
