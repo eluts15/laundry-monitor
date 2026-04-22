@@ -7,8 +7,6 @@
 )]
 #![deny(clippy::large_stack_frames)]
 
-extern crate alloc;
-
 use core::fmt::Write;
 use core::task::{Context, RawWaker, RawWakerVTable, Waker};
 
@@ -24,7 +22,7 @@ use esp_hal::timer::timg::TimerGroup;
 use esp_println::println;
 use esp_radio::wifi::{ClientConfig, ModeConfig};
 use smoltcp::iface::{SocketSet, SocketStorage};
-use smoltcp::wire::IpAddress;
+use smoltcp::wire::Ipv4Address;
 
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
@@ -34,21 +32,42 @@ fn panic(_: &core::panic::PanicInfo) -> ! {
 // This creates a default app-descriptor required by the esp-idf bootloader.
 esp_bootloader_esp_idf::esp_app_desc!();
 
-// WiFi credentials — set these environment variables before building:
-//   export WIFI_SSID="your-network"
-//   export WIFI_PASSWORD="your-password"
+// WiFi credentials
 const WIFI_SSID: &str = env!("WIFI_SSID");
 const WIFI_PASSWORD: &str = env!("WIFI_PASSWORD");
 
-/// Local IP of the machine running the ntfy Docker container.
-/// Update this before flashing: run `ip route` or `ifconfig` on the host.
-const NTFY_HOST: IpAddress = IpAddress::v4(192, 168, 0, 159);
-const NTFY_PORT: u16 = 8080;
-const NTFY_TOPIC: &str = "laundry-monitor-test";
+const fn octet(s: &str) -> u8 {
+    match s.as_bytes() {
+        [a] => *a - b'0',
+        [a, b] => (*a - b'0') * 10 + (*b - b'0'),
+        [a, b, c] => (*a - b'0') * 100 + (*b - b'0') * 10 + (*c - b'0'),
+        _ => panic!("invalid octet"),
+    }
+}
 
+/// Local IP of the machine running the ntfy Docker container.
+const HOST_IP: Ipv4Address = Ipv4Address::new(
+    octet(env!("HOST_IP_0")),
+    octet(env!("HOST_IP_1")),
+    octet(env!("HOST_IP_2")),
+    octet(env!("HOST_IP_3")),
+);
+
+const fn parse_u16(s: &str) -> u16 {
+    let s = s.as_bytes();
+    let mut val: u16 = 0;
+    let mut i = 0;
+    while i < s.len() {
+        val = val * 10 + (s[i] - b'0') as u16;
+        i += 1;
+    }
+    val
+}
+
+const NFTY_PORT: u16 = parse_u16(env!("NFTY_PORT"));
+const NFTY_TOPIC: &str = env!("NFTY_TOPIC");
 /// How long the sensor must be still before declaring the cycle complete.
 const IDLE_TIMEOUT: Duration = Duration::from_secs(30);
-
 /// How often to poll the sensor (5 ms catches brief SW-420 pulses).
 const POLL_INTERVAL: Duration = Duration::from_millis(5);
 
@@ -301,7 +320,7 @@ fn send_ntfy_notification<D: smoltcp::phy::Device>(stack: &mut Stack<'_, D>) {
     };
     let mut socket = stack.get_socket(rx, tx);
 
-    if let Err(e) = socket.open(NTFY_HOST, NTFY_PORT) {
+    if let Err(e) = socket.open(smoltcp::wire::IpAddress::Ipv4(HOST_IP), NFTY_PORT) {
         println!("[ERROR] TCP open failed: {:?}", e);
         return;
     }
@@ -313,7 +332,7 @@ fn send_ntfy_notification<D: smoltcp::phy::Device>(stack: &mut Stack<'_, D>) {
     write!(
         request,
         "POST /{} HTTP/1.0\r\nHost: {}:{}\r\nContent-Type: text/plain\r\nTitle: Laundry Done\r\nContent-Length: {}\r\n\r\n{}",
-        NTFY_TOPIC, NTFY_HOST, NTFY_PORT, body.len(), body
+        NFTY_TOPIC, HOST_IP, NFTY_PORT, body.len(), body
     )
     .unwrap();
 
@@ -338,7 +357,7 @@ fn send_ntfy_notification<D: smoltcp::phy::Device>(stack: &mut Stack<'_, D>) {
     }
 
     socket.disconnect();
-    println!("[INFO] ntfy notification sent (topic: '{}').", NTFY_TOPIC);
+    println!("[INFO] ntfy notification sent (topic: '{}').", NFTY_TOPIC);
 }
 
 fn blocking_delay(duration: Duration) {

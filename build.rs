@@ -1,7 +1,102 @@
+use std::fs;
+
 fn main() {
+    load_env();
     linker_be_nice();
     // make sure linkall.x is the last linker script (otherwise might cause problems with flip-link)
     println!("cargo:rustc-link-arg=-Tlinkall.x");
+}
+
+/// Reads variables from a `.env` file in the workspace root (if present) and
+/// re-exports them as Cargo environment variables.
+///
+/// Variables loaded:
+///   - `WIFI_SSID`      → `env!("WIFI_SSID")`
+///   - `WIFI_PASSWORD`  → `env!("WIFI_PASSWORD")`
+///   - `HOST_IP`        → `env!("HOST_IP_0")` .. `env!("HOST_IP_3")` (octets)
+///   - `NFTY_PORT`      → `env!("NFTY_PORT")` (validated u16)
+///   - `NFTY_TOPIC`     → `env!("NFTY_TOPIC")`
+/// Precedence: a value already present in the *process* environment (e.g. set
+/// by CI or exported in the shell) always wins over the `.env` file, so you
+/// can override without touching the file.
+fn load_env() {
+    // Tell Cargo to re-run this script whenever .env changes.
+    println!("cargo:rerun-if-changed=.env");
+    // Re-run if any watched variable changes in the shell environment.
+    for var in [
+        "WIFI_SSID",
+        "WIFI_PASSWORD",
+        "HOST_IP",
+        "NFTY_PORT",
+        "NFTY_TOPIC",
+    ] {
+        println!("cargo:rerun-if-env-changed={var}");
+    }
+
+    // Parse .env file into a simple key→value map (best-effort; missing file
+    // is not an error — the vars might come from the shell environment).
+    let mut file_vars = std::collections::HashMap::new();
+    if let Ok(contents) = fs::read_to_string(".env") {
+        for line in contents.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            if let Some((key, val)) = line.split_once('=') {
+                file_vars.insert(key.trim().to_string(), val.trim().to_string());
+            }
+        }
+    }
+
+    // Helper: resolve a variable from the environment or .env file.
+    let resolve = |var: &str| -> String {
+        std::env::var(var)
+            .ok()
+            .or_else(|| file_vars.get(var).cloned())
+            .unwrap_or_else(|| {
+                panic!(
+                    "\n\n\
+                    ❌  `{var}` is not set.\n\
+                    \n\
+                    Add it to a `.env` file in the project root:\n\
+                    \n\
+                    {var}=your_value\n\
+                    \n\
+                    …or export it in your shell before running `cargo build`.\n"
+                )
+            })
+    };
+
+    // -- String vars ----------------------------------------------------------
+    for var in ["WIFI_SSID", "WIFI_PASSWORD", "NFTY_TOPIC"] {
+        println!("cargo:rustc-env={var}={}", resolve(var));
+    }
+
+    // -- HOST_IP → individual octets ------------------------------------------
+    let host_ip = resolve("HOST_IP");
+    let octets: Vec<u8> = host_ip
+        .trim()
+        .split('.')
+        .map(|o| {
+            o.parse::<u8>()
+                .unwrap_or_else(|_| panic!("❌  HOST_IP `{host_ip}` is not a valid IPv4 address"))
+        })
+        .collect();
+    assert!(
+        octets.len() == 4,
+        "❌  HOST_IP `{host_ip}` must have exactly 4 octets"
+    );
+    for (i, octet) in octets.iter().enumerate() {
+        println!("cargo:rustc-env=HOST_IP_{i}={octet}");
+    }
+
+    // -- NFTY_PORT → validated u16 --------------------------------------------
+    let port_str = resolve("NFTY_PORT");
+    let port: u16 = port_str
+        .trim()
+        .parse()
+        .unwrap_or_else(|_| panic!("❌  NFTY_PORT `{port_str}` must be a valid u16 (0–65535)"));
+    println!("cargo:rustc-env=NFTY_PORT={port}");
 }
 
 fn linker_be_nice() {
