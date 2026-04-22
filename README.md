@@ -85,7 +85,7 @@ chmod +x setup_environment.sh
 ./setup_environment.sh
 ```
 
-Here's a review of what it does:
+What the script does:
 
 **System packages (via `apt-get`)**
 
@@ -143,7 +143,7 @@ docker compose -f server.yml up -d
 
 The ntfy web interface will be available at `http://<your-machine-ip>:<port>`.
 Open the ntfy app on your phone, add a server pointing to that address, and
-subscribe to your chosen topic name.
+subscribe to both your washer and dryer topic names.
 
 ### 3. Create a `.env` file
 
@@ -154,11 +154,19 @@ WIFI_SSID=your-network-name
 WIFI_PASSWORD=your-network-password
 HOST_IP=192.168.1.100
 NFTY_PORT=80
-NFTY_TOPIC=laundry
+
+WASHER_GPIO=25
+WASHER_TOPIC=washer
+WASHER_IDLE_TIMEOUT_SECS=30
+
+DRYER_GPIO=26
+DRYER_TOPIC=dryer
+DRYER_IDLE_TIMEOUT_SECS=60
 ```
 
 - `HOST_IP` is the local IP address of the machine running the ntfy Docker container.
-- `NFTY_TOPIC` can be any word — it just needs to match what you subscribed to in the ntfy app.
+- `WASHER_TOPIC` and `DRYER_TOPIC` can be any word — they just need to match the topics you subscribed to in the ntfy app.
+- `WASHER_IDLE_TIMEOUT_SECS` and `DRYER_IDLE_TIMEOUT_SECS` control how long each appliance must be still before a notification is sent. Dryers typically run longer cycles so a higher value reduces false alerts.
 
 These values are compiled directly into the firmware, so no credentials are
 stored on the device at runtime.
@@ -189,23 +197,23 @@ see output like this in the serial monitor:
 [INFO] WiFi connected.
 [INFO] Waiting for DHCP...
 [INFO] Network ready.
-[INFO] Laundry monitor started — waiting for vibrations...
+[INFO] Laundry monitor started — watching Washer (GPIO25) and Dryer (GPIO26).
 ```
 
-When the machine starts:
+When a machine starts:
 
 ```
-[DEBUG] State -> VIBRATING
+[DEBUG] Washer -> VIBRATING
 ```
 
-When the machine finishes and goes quiet:
+When a machine finishes and goes quiet:
 
 ```
-[DEBUG] State -> STILL
-[DEBUG] IDLE (10/30 s without vibration)
-[DEBUG] IDLE (20/30 s without vibration)
-[INFO] Cycle complete — sending ntfy notification...
-[INFO] ntfy notification sent (topic: 'laundry').
+[DEBUG] Washer -> STILL
+[DEBUG] Washer IDLE (10/30 s without vibration)
+[DEBUG] Washer IDLE (20/30 s without vibration)
+[INFO] Washer cycle complete — sending ntfy notification...
+[INFO] ntfy notification sent (topic: 'washer').
 ```
 
 A notification will appear on your phone shortly after.
@@ -232,6 +240,7 @@ laundry-monitor/
     ├── lib.rs                # Module declarations
     ├── bin/
     │   └── main.rs           # Startup, WiFi, and main sensor loop
+    ├── appliance.rs          # Per-appliance state machine
     ├── wifi_adapter.rs       # WiFi driver glue code
     ├── notify.rs             # Sends the HTTP notification
     └── utils.rs              # Shared helper functions
@@ -246,14 +255,14 @@ Check that `HOST_IP` in your `.env` points to the machine running Docker, and
 that the ntfy container is running. Confirm the port matches what Docker is
 exposing.
 
-**The notification fires too early or too late.**
-The idle timeout is 30 seconds by default. You can adjust it by changing
-`IDLE_TIMEOUT` in `src/bin/main.rs`.
+**A notification fires too early or too late.**
+Adjust `WASHER_IDLE_TIMEOUT_SECS` or `DRYER_IDLE_TIMEOUT_SECS` in your `.env`
+and reflash. No source code changes are needed.
 
 **Spurious notifications when nobody is doing laundry.**
 The sensor may be picking up footsteps or other household vibration. Try
-repositioning it, or increase `IDLE_TIMEOUT` to require a longer quiet period
-before alerting.
+repositioning it, or increase the relevant idle timeout to require a longer
+quiet period before alerting.
 
 **`cargo run` cannot find the device.**
 Make sure the ESP32 is connected via USB and that your user has serial port

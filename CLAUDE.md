@@ -8,17 +8,18 @@ SW-420 vibration sensor and sends an HTTP push notification to a local
 
 ## Hardware
 
-| Component        | Detail                                      |
-|------------------|---------------------------------------------|
-| MCU              | ESP32 (Xtensa LX6)                          |
-| Sensor           | SW-420 vibration sensor module              |
-| Sensor pin       | GPIO25 (active-high, internal pull-down)    |
-| Power            | USB or 3.3 V rail                           |
+| Component        | Detail                                             |
+|------------------|----------------------------------------------------|
+| MCU              | ESP32 (Xtensa LX6)                                 |
+| Sensor           | SW-420 vibration sensor module (one per appliance  |
+| Sensor pin       | GPIO25 (active-high, internal pull-down)           |
+| Sensor pin       | GPIO26 (active-high, internal pull-down)           |
+| Power            | USB or 3.3 V rail                                  |
 
 **SW-420 wiring:**
 - `VCC` → 3.3 V
 - `GND` → GND
-- `D0`  → GPIO25
+- `D0`  → GPIO25/GPIO26
 
 The sensor output goes **HIGH** when vibrating and **LOW** when still.
 
@@ -107,7 +108,14 @@ WIFI_SSID=your-network-name
 WIFI_PASSWORD=your-network-password
 HOST_IP=192.168.1.100        # LAN IP of the machine running the ntfy container
 NFTY_PORT=80                 # Port ntfy is listening on
-NFTY_TOPIC=laundry           # ntfy topic name
+
+WASHER_GPIO=25               # GPIO pin for the washer SW-420 sensor
+WASHER_TOPIC=washer          # ntfy topic for washer notifications
+WASHER_IDLE_TIMEOUT_SECS=30  # Seconds of stillness before alerting
+
+DRYER_GPIO=26                # GPIO pin for the dryer SW-420 sensor
+DRYER_TOPIC=dryer            # ntfy topic for dryer notifications
+DRYER_IDLE_TIMEOUT_SECS=60   # Seconds of stillness before alerting
 ```
 
 > **Note:** Any variable already exported in the shell takes precedence over
@@ -137,12 +145,12 @@ The serial monitor will print structured log lines:
 [INFO] Waiting for DHCP...
 [INFO] IP: ...
 [INFO] Network ready.
-[INFO] Laundry monitor started — waiting for vibrations...
-[DEBUG] State -> VIBRATING
-[DEBUG] State -> STILL
-[DEBUG] IDLE (12/30 s without vibration)
-[INFO] Cycle complete — sending ntfy notification...
-[INFO] ntfy notification sent (topic: 'laundry').
+[INFO] Laundry monitor started — watching Washer (GPIO25) and Dryer (GPIO26).
+[DEBUG] Washer -> VIBRATING
+[DEBUG] Washer -> STILL
+[DEBUG] Washer IDLE (12/30 s without vibration)
+[INFO] Washer cycle complete — sending ntfy notification...
+[INFO] ntfy notification sent (topic: 'washer').
 ```
 
 ---
@@ -156,7 +164,8 @@ cd docker
 docker compose -f server.yml up -d
 ```
 
-The ESP32 POSTs to `http://<HOST_IP>:<NFTY_PORT>/<NFTY_TOPIC>` using a
+The ESP32 POSTs to `http://<HOST_IP>:<NFTY_PORT>/<TOPIC>` (where `<TOPIC>` is
+`WASHER_TOPIC` or `DRYER_TOPIC` depending on which appliance completed) using a
 minimal HTTP/1.0 request. HTTP/1.0 is used deliberately — the server closes
 the connection after responding, so no header parsing is needed to detect
 end-of-response.
