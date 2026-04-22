@@ -43,6 +43,8 @@ impl Appliance {
         }
     }
 
+    // TODO: Implement some form of debouncing.
+
     /// Called on every main loop iteration with the current sensor pin state.
     ///
     /// Handles state transition logging, idle countdown heartbeats, and fires

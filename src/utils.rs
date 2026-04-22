@@ -30,6 +30,7 @@ pub const fn octet(s: &str) -> u8 {
     }
 }
 
+// TODO: These functions should be generic.
 /// Parses a `u16` from a decimal string at compile time.
 pub const fn parse_u16(s: &str) -> u16 {
     let s = s.as_bytes();
