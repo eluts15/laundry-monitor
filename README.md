@@ -33,7 +33,7 @@ on your phone.
 **Software**
 
 - Tested on Ubuntu 22.04.5 LTS
-- Docker, for running the ntfy notification server
+- Docker, for running the ntfy notification server ([nfty docker image](https://hub.docker.com/r/binwiederhier/ntfy))
 - The ntfy app on your phone ([iOS](https://apps.apple.com/us/app/ntfy/id1625396347) / [Android](https://play.google.com/store/apps/details?id=io.heckel.ntfy))
 
 ---
@@ -153,7 +153,7 @@ In the project root, create a file named `.env` with your network details:
 WIFI_SSID=your-network-name
 WIFI_PASSWORD=your-network-password
 HOST_IP=192.168.1.100
-NFTY_PORT=80
+PORT=80
 
 WASHER_GPIO=25
 WASHER_TOPIC=washer
