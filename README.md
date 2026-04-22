@@ -269,7 +269,7 @@ Make sure the ESP32 is connected via USB and that your user has serial port
 access. See the note in the Setup section above.
 
 ## TODO
-
+**Rename NFTY references to NTFY(lol)**
 **Implement debouncing to eliminate false positives.**
 **Add logic for magnetic read sensors (door state: OPEN/CLOSED).**
 **If door is OPEN, we shouldn't be sending alerts. System should only be active when the door is CLOSED and vibrations are detected.**
