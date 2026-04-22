@@ -15,7 +15,7 @@ or API keys required.
 
 The ESP32 sits on top of (or next to) your washing machine with the vibration
 sensor touching the surface. While the machine is running, the sensor detects
-movement. Once the machine has been still for 30 seconds, the ESP32 sends an
+movement. Once the machine has been still for 30 seconds(configurable --passed via .env currently), the ESP32 sends an
 HTTP notification to your local ntfy server, which forwards it to the ntfy app
 on your phone.
 
@@ -267,3 +267,10 @@ quiet period before alerting.
 **`cargo run` cannot find the device.**
 Make sure the ESP32 is connected via USB and that your user has serial port
 access. See the note in the Setup section above.
+
+## TODO
+
+**Implement debouncing to eliminate false positives.**
+**Add logic for magnetic read sensors (door state: OPEN/CLOSED).**
+**If door is OPEN, we shouldn't be sending alerts. System should only be active when the door is CLOSED and vibrations are detected.**
+**Logic for handling interuptions such as: DOOR is opened while cycle is active, pauses mid-cycle, with the ability to continue when CLOSED.**
