@@ -15,7 +15,7 @@ use esp_hal::rng::Rng;
 use esp_hal::time::{Duration, Instant};
 use esp_hal::timer::timg::TimerGroup;
 use esp_println::println;
-use esp_radio::wifi::{ClientConfig, ModeConfig};
+use esp_radio::wifi::{ClientConfig, ModeConfig, WifiError};
 use laundry_monitor::appliance::Appliance;
 use laundry_monitor::utils::{blocking_delay, octet, parse_u16, parse_u64};
 use laundry_monitor::wifi_adapter::WifiAdapter;
@@ -43,7 +43,7 @@ const HOST_IP: Ipv4Address = Ipv4Address::new(
     octet(env!("HOST_IP_3")),
 );
 
-const NFTY_PORT: u16 = parse_u16(env!("NFTY_PORT"));
+const PORT: u16 = parse_u16(env!("PORT"));
 
 // -- Washer config ------------------------------------------------------------
 const WASHER_TOPIC: &str = env!("WASHER_TOPIC");
@@ -97,6 +97,9 @@ fn main() -> ! {
         match wifi_ctrl.is_connected() {
             Ok(true) => break,
             Ok(false) => {}
+            Err(WifiError::Disconnected) => {
+                // Transient during association — keep waiting.
+            }
             Err(e) => panic!("WiFi error: {:?}", e),
         }
     }
@@ -158,8 +161,8 @@ fn main() -> ! {
         // Keep the network stack alive between sensor polls.
         stack.work();
 
-        washer.poll(washer_pin.is_high(), &mut stack, HOST_IP, NFTY_PORT);
-        dryer.poll(dryer_pin.is_high(), &mut stack, HOST_IP, NFTY_PORT);
+        washer.poll(washer_pin.is_high(), &mut stack, HOST_IP, PORT);
+        dryer.poll(dryer_pin.is_high(), &mut stack, HOST_IP, PORT);
 
         blocking_delay(POLL_INTERVAL);
     }

@@ -14,7 +14,7 @@ fn main() {
 ///   - `WIFI_SSID`               → `env!("WIFI_SSID")`
 ///   - `WIFI_PASSWORD`           → `env!("WIFI_PASSWORD")`
 ///   - `HOST_IP`                 → `env!("HOST_IP_0")` .. `env!("HOST_IP_3")` (octets)
-///   - `NFTY_PORT`               → `env!("NFTY_PORT")` (validated u16)
+///   - `PORT`               → `env!("PORT")` (validated u16)
 ///   - `WASHER_GPIO`             → `env!("WASHER_GPIO")` (validated u8)
 ///   - `WASHER_TOPIC`            → `env!("WASHER_TOPIC")`
 ///   - `WASHER_IDLE_TIMEOUT_SECS`→ `env!("WASHER_IDLE_TIMEOUT_SECS")` (validated u64)
@@ -33,7 +33,7 @@ fn load_env() {
         "WIFI_SSID",
         "WIFI_PASSWORD",
         "HOST_IP",
-        "NFTY_PORT",
+        "PORT",
         "WASHER_GPIO",
         "WASHER_TOPIC",
         "WASHER_IDLE_TIMEOUT_SECS",
@@ -101,13 +101,13 @@ fn load_env() {
         println!("cargo:rustc-env=HOST_IP_{i}={octet}");
     }
 
-    // -- NFTY_PORT → validated u16 --------------------------------------------
-    let port_str = resolve("NFTY_PORT");
+    // -- PORT → validated u16 --------------------------------------------
+    let port_str = resolve("PORT");
     let port: u16 = port_str
         .trim()
         .parse()
-        .unwrap_or_else(|_| panic!("❌  NFTY_PORT `{port_str}` must be a valid u16 (0–65535)"));
-    println!("cargo:rustc-env=NFTY_PORT={port}");
+        .unwrap_or_else(|_| panic!("❌  PORT `{port_str}` must be a valid u16 (0–65535)"));
+    println!("cargo:rustc-env=PORT={port}");
 
     // -- Appliance GPIO pins → validated u8 -----------------------------------
     for var in ["WASHER_GPIO", "DRYER_GPIO"] {

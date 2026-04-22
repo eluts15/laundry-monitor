@@ -1,13 +1,6 @@
 [target.xtensa-esp32-none-elf]
 runner = "espflash flash --monitor --chip esp32"
 
-[env]
-# Set these in your shell before building:
-#   export WIFI_SSID="your-network"
-#   export WIFI_PASSWORD="your-password"
-#
-# Update NTFY_HOST in src/bin/main.rs to your machine's local IP.
-
 [build]
 rustflags = [
   "-C", "link-arg=-nostartfiles",

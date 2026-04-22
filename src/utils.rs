@@ -1,4 +1,4 @@
-use core::task::{RawWaker, RawWakerVTable, Waker};
+use core::task::Waker;
 
 use esp_hal::time::{Duration, Instant};
 
