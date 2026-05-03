@@ -58,9 +58,9 @@ impl Appliance {
     ) {
         // Log on state transitions only — avoids serial spam at 200 Hz.
         if is_high && !self.prev_is_high {
-            println!("[DEBUG] {} -> VIBRATING", self.name);
+            println!("[DEBUG] {} -> RUNNING", self.name);
         } else if !is_high && self.prev_is_high {
-            println!("[DEBUG] {} -> STILL", self.name);
+            println!("[DEBUG] {} -> STOPPED", self.name);
         }
         self.prev_is_high = is_high;
 
@@ -83,7 +83,7 @@ impl Appliance {
             // Emit a progress message every 10 s during the idle countdown.
             if !self.alert_sent && self.last_heartbeat.elapsed() >= Duration::from_secs(10) {
                 println!(
-                    "[DEBUG] {} IDLE ({}/{} s without vibration)",
+                    "[DEBUG] {} IDLE ({}/{} s without vibration detected)",
                     self.name,
                     elapsed.as_secs(),
                     self.idle_timeout.as_secs(),

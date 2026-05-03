@@ -2,18 +2,6 @@ use core::task::Waker;
 
 use esp_hal::time::{Duration, Instant};
 
-/// Creates a no-op waker for use in busy-wait polling loops.
-/// We never need the driver to wake a future — we poll unconditionally.
-//pub fn noop_waker() -> Waker {
-//    const VTABLE: RawWakerVTable = RawWakerVTable::new(
-//        |_| RawWaker::new(core::ptr::null(), &VTABLE),
-//        |_| {},
-//        |_| {},
-//        |_| {},
-//    );
-//    unsafe { Waker::from_raw(RawWaker::new(core::ptr::null(), &VTABLE)) }
-//}
-
 pub fn noop_waker() -> Waker {
     Waker::noop().clone() // stable as of Rust 1.85 / noop_waker feature
 }
